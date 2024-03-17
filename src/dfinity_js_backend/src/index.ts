@@ -237,6 +237,7 @@ export default Canister({
 })
 
 function timeoutTransaction(memo: string, delay: Duration) {
+    console.log('test')
     ic.setTimer(delay, () => {
         const trx = transactionPending.remove(memo);
         console.log(`Transaction has been expired ${trx}`);
