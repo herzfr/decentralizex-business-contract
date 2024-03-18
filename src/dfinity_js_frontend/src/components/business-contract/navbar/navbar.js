@@ -2,14 +2,14 @@ import React from "react";
 import { Button, Container, Navbar } from "react-bootstrap";
 import './navbar.css'
 
-function Navi(data) {
+function Navi({ isAuthenticated }) {
     return (
         <Navbar sticky="top" className="bg-body-tertiary">
             <Container>
-                <Navbar.Brand href="#home">Navbar with text</Navbar.Brand>
+                <Navbar.Brand href="#home">DCX Business Contract</Navbar.Brand>
                 <Navbar.Toggle />
                 <Navbar.Collapse className="justify-content-end" style={{ maxWidth: '20%' }} >
-                    {data.isAuthenticated ? (
+                    {isAuthenticated ? (
                         <Navbar.Text>
                             Signed in as: <a href="#login">Mark Otto</a>
                         </Navbar.Text>
