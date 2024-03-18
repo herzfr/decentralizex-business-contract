@@ -6,7 +6,7 @@ export async function initializeContract() {
     window.auth = {};
     window.canister = {};
     window.auth.client = authClient;
-    window.auth.isAuthenticated = authClient.isAuthenticated()
+    window.auth.isAuthenticated = await authClient.isAuthenticated()
     window.auth.identity = authClient.getIdentity();
     window.auth.principal = authClient.getIdentity()?.getPrincipal();
     window.auth.principalText = authClient.getIdentity()?.getPrincipal().toText();

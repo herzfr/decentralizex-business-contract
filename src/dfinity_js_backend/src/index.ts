@@ -2,7 +2,7 @@ import { Canister, Duration, None, Opt, Principal, Result, Some, StableBTreeMap,
 import { contract, contractpayload, createpaymentpayload, getcontractapplicant, getcontractholder, getcontractpayload, getpartypayload, makepaymentpayload, parties, partiespayload, payloadsign, payment, signature, transaction } from './interface';
 import { ICContract, ICParty, ICSignature } from './payload';
 import { v4 as uuidv4 } from "uuid";
-import { hash } from '@dfinity/agent';
+// import { hash } from '@dfinity/agent';
 import { Principal as PrincipalDfinity } from '@dfinity/principal';
 import { Ledger as LadgerCanister, binaryAddressFromPrincipal, hexAddressFromPrincipal } from 'azle/canisters/ledger'
 
@@ -252,7 +252,7 @@ export default Canister({
         const bsnis = businessContract.get(payload.contract_id)
 
         if ("None" in bsnis) {
-            throw Error(`Contract with id=${payload.contract_id} not found`)
+            throw Result.Err(`Contract with id=${payload.contract_id} not found`)
         }
 
         const busniss = bsnis.Some;
@@ -315,31 +315,54 @@ function getRandomId(length: number): string {
 
 
 async function hashdecode(value: Uint8Array): Promise<nat64> {
-    const hashedValue = await hash(value)
-    const hashBigInt = BigInt('0x' + Array.from(new Uint8Array(hashedValue))
-        .map(byte => byte.toString(16).padStart(2, '0'))
-        .join(''));
-
-    const maxNat64 = BigInt(2) ** BigInt(64) - BigInt(1);
-    const hashNat64 = hashBigInt & maxNat64;
-    return hashNat64
+    return await calculateHashCode(value) as unknown as nat64;
 }
 
 async function getCorrelationId(transactionid: text): Promise<nat64> {
     const correlationId = `${transactionid}_${ic.caller().toText()}_${ic.time()}`;
-    return await hashing(correlationId)
+    return await calculateHashCode(correlationId) as unknown as nat64;
 };
 
-async function hashing(params: text): Promise<nat64> {
-    const encoder = new TextEncoder();
-    const inputBuffer = encoder.encode(params);
-    const hashedValue = await hash(inputBuffer)
+function calculateHashCode(input: any): Uint8Array {
+    // Hashes a string
+    const hash = function (string: string): number {
+        let hashValue = 0;
+        for (let i = 0; i < string.length; i++) {
+            hashValue = (((hashValue << 5) - hashValue) + string.charCodeAt(i)) & 0xFFFFFFFF;
+        }
+        return hashValue;
+    };
 
-    const hashBigInt = BigInt('0x' + Array.from(new Uint8Array(hashedValue))
-        .map(byte => byte.toString(16).padStart(2, '0'))
-        .join(''));
+    // Deep hashes an object
+    const objectHash = function (obj: any): number {
+        let result = 0;
+        for (const property in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, property)) {
+                result += hash(property + calculateHashCode(obj[property]));
+            }
+        }
+        return result;
+    };
 
-    const maxNat64 = BigInt(2) ** BigInt(64) - BigInt(1);
-    const hashNat64 = hashBigInt & maxNat64;
-    return hashNat64
+    // Does a type check on the passed-in value and calls the appropriate hash method
+    const valueHash = function (value: any): number {
+        const types: { [key: string]: (input: any) => number } = {
+            'string': hash,
+            'number': hash,
+            'boolean': hash,
+            'object': objectHash
+        };
+        const type = typeof value;
+        return value != null && types[type] ? types[type](value) + hash(type) : 0;
+    };
+
+    return convertToNat64(valueHash(input))
 }
+
+function convertToNat64(hashValue: number): Uint8Array {
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+    view.setBigUint64(0, BigInt(hashValue), true);
+    return new Uint8Array(buffer);
+}
+

@@ -95,6 +95,11 @@ module.exports = {
           to: ".ic-assets.json5",
           noErrorOnMissing: true,
         },
+        {
+          from: `src/${frontendDirectory}/src/assets`,
+          to: "assets",
+          noErrorOnMissing: false,
+        },
       ],
     }),
   ],
@@ -110,9 +115,13 @@ module.exports = {
         },
       },
     },
-    static: path.resolve(__dirname, "src", frontendDirectory, "assets"),
+    static: [
+      path.resolve(__dirname, "src", frontendDirectory, "src/assets"),
+      path.resolve(__dirname, "src", frontendDirectory, "assets"),
+      path.resolve(__dirname, "src", frontendDirectory, "src")
+    ],
     hot: true,
-    watchFiles: [path.resolve(__dirname, "src", frontendDirectory)],
+    watchFiles: [path.resolve(__dirname, "src", frontendDirectory, "src")],
     liveReload: true,
   },
 };
