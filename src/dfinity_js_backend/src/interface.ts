@@ -148,3 +148,12 @@ export const createpaymentpayload = Record({
     transaction_memo: text,
     paid_to_block: Opt(nat64),
 })
+
+export const makepaymentpayload = Record({
+    contract_id: text,
+    principal: Principal,
+    amount: nat64,
+    transaction_block: text,
+    transaction_memo: text,
+    transaction_hash: nat64
+})

@@ -1,19 +1,24 @@
-import { Canister, Duration, None, Opt, Principal, Result, StableBTreeMap, Vec, ic, nat64, query, text, update } from 'azle';
-import { contract, contractpayload, createpaymentpayload, getcontractapplicant, getcontractholder, getcontractpayload, getpartypayload, parties, partiespayload, payloadsign, signature, transaction } from './interface';
+import { Canister, Duration, None, Opt, Principal, Result, Some, StableBTreeMap, Vec, bool, ic, nat64, query, text, update } from 'azle';
+import { contract, contractpayload, createpaymentpayload, getcontractapplicant, getcontractholder, getcontractpayload, getpartypayload, makepaymentpayload, parties, partiespayload, payloadsign, payment, signature, transaction } from './interface';
 import { ICContract, ICParty, ICSignature } from './payload';
 import { v4 as uuidv4 } from "uuid";
 import { hash } from '@dfinity/agent';
+import { Principal as PrincipalDfinity } from '@dfinity/principal';
+import { Ledger as LadgerCanister, binaryAddressFromPrincipal, hexAddressFromPrincipal } from 'azle/canisters/ledger'
 
 type Contract = typeof contract.tsType;
 type Parties = typeof parties.tsType;
 type Signature = typeof signature.tsType;
 type Transaction = typeof transaction.tsType;
+type Payment = typeof payment.tsType
 
 const TIMEOUT_PERIOD = 48000n;
 
 let businessContract = StableBTreeMap<text, Contract>(2);
 let businessParties = StableBTreeMap<text, Parties>(1);
 let transactionPending = StableBTreeMap<text, Transaction>(0);
+
+const icpCanister = LadgerCanister(PrincipalDfinity.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"))
 
 export default Canister({
     upsertParties: update([partiespayload], Result(parties, text), async (payload) => {
@@ -234,7 +239,60 @@ export default Canister({
         timeoutTransaction(memo_hash.toString(), TIMEOUT_PERIOD);
         return Result.Ok(tranx);
     }),
+    maketPayment: update([nat64, makepaymentpayload], Result(text, text), async (cvr, payload) => {
+        const trx = transactionPending.get(payload.transaction_memo)
+        if ('None' in trx) Result.Err("Transaksi tidak ditemukan")
+
+        const isVerified = await verifyPayment(cvr, payload.principal, payload.transaction_hash)
+        if (!isVerified) {
+            return Result.Err(`cannot complete the reserve: cannot verify the payment, memo=${payload.transaction_memo}`);
+        }
+
+        const trsx = trx.Some
+        const bsnis = businessContract.get(payload.contract_id)
+
+        if ("None" in bsnis) {
+            throw Error(`Contract with id=${payload.contract_id} not found`)
+        }
+
+        const busniss = bsnis.Some;
+        busniss.payment = await calculate(busniss.contract_payment, busniss.payment, trsx!)
+        businessContract.insert(busniss.contract_id, busniss)
+        transactionPending.remove(payload.transaction_memo)
+        return Result.Ok("Payment Success");
+    }),
+    getAddressFromPrincipal: query([Principal], text, (principal) => {
+        return hexAddressFromPrincipal(principal, 0);
+    }),
+
 })
+
+async function calculate(contract_payment: nat64, payment: Payment, trx: Transaction): Promise<Payment> {
+    const py = payment;
+    py.transactions.push(trx)
+    py.total_payment = BigInt(py.transactions.reduce((a, b) => a + parseFloat(b.total.toString()), 0))
+    py.payment_status = py.total_payment === contract_payment
+        ? { "Completed": "PAYMENT_COMPLETED" } : py.total_payment < contract_payment && py.total_payment > BigInt(0)
+            ? { "DownPayment": "DOWN_PAYMENT" } : py.total_payment < contract_payment && py.transactions.length > 1
+                ? { "Partial": "PARTIAL" } : { "PaymentPending": "PAYMENT_PENDING" }
+    py.change_output = (contract_payment - py.total_payment)
+    return await py;
+}
+
+async function verifyPayment(block: nat64, recieverX: Principal, memo_hash: nat64): Promise<bool> {
+    const blockdata = await ic.call(icpCanister.query_blocks,
+        { args: [{ start: block, length: 1n }] });
+    const trx = blockdata.blocks.find(f => {
+        if ("None" in f.transaction.operation) return false;
+        const operation = f.transaction.operation.Some;
+        const sender = binaryAddressFromPrincipal(ic.caller(), 0)
+        const reciever = binaryAddressFromPrincipal(recieverX, 0)
+        return f.transaction.memo === memo_hash
+            && hashdecode(sender) === hashdecode(operation.Transfer!.from)
+            && hashdecode(reciever) === hashdecode(operation.Transfer!.to)
+    })
+    return trx ? true : false
+}
 
 function timeoutTransaction(memo: string, delay: Duration) {
     console.log('test')
@@ -256,15 +314,32 @@ function getRandomId(length: number): string {
 }
 
 
+async function hashdecode(value: Uint8Array): Promise<nat64> {
+    const hashedValue = await hash(value)
+    const hashBigInt = BigInt('0x' + Array.from(new Uint8Array(hashedValue))
+        .map(byte => byte.toString(16).padStart(2, '0'))
+        .join(''));
+
+    const maxNat64 = BigInt(2) ** BigInt(64) - BigInt(1);
+    const hashNat64 = hashBigInt & maxNat64;
+    return hashNat64
+}
+
 async function getCorrelationId(transactionid: text): Promise<nat64> {
     const correlationId = `${transactionid}_${ic.caller().toText()}_${ic.time()}`;
+    return await hashing(correlationId)
+};
+
+async function hashing(params: text): Promise<nat64> {
     const encoder = new TextEncoder();
-    const inputBuffer = encoder.encode(correlationId);
+    const inputBuffer = encoder.encode(params);
     const hashedValue = await hash(inputBuffer)
 
     const hashBigInt = BigInt('0x' + Array.from(new Uint8Array(hashedValue))
         .map(byte => byte.toString(16).padStart(2, '0'))
         .join(''));
 
-    return hashBigInt as nat64
-};
+    const maxNat64 = BigInt(2) ** BigInt(64) - BigInt(1);
+    const hashNat64 = hashBigInt & maxNat64;
+    return hashNat64
+}
