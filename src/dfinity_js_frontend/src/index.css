@@ -1,3 +1,13 @@
+:root {
+  --business-color-semi: #1F2833;
+  --business-color-grey: #C5C6C7;
+  --business-color-primary: #66FCF1;
+  --business-color-secondary: #45A29E;
+
+  --tw-bg-opacity: 1;
+  --business-color-dark: rgb(19 23 34 / var(--tw-bg-opacity))
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -10,4 +20,52 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+
+.btn-dcx-secondary {
+  color: #66FCF1 !important;
+  background: #131722 !important;
+  border: 1px solid #66fcf1 !important;
+}
+
+.btn-dcx-primary {
+  font-size: 14px !important;
+  color: #131722 !important;
+  background: #66FCF1 !important;
+  border: 1px solid #131722 !important;
+  --tw-drop-shadow: drop-shadow(0 4px 3px rgba(0, 0, 0, .07)) drop-shadow(0 2px 2px rgba(0, 0, 0, .06)) !important;
+  filter: var(--tw-drop-shadow) !important;
+}
+
+.btn-dcx-primary:hover {
+  background-color: white !important;
+  animation-delay: 4s;
+}
+
+.btn-navigation {
+  font-size: 14px !important;
+  color: #131722 !important;
+  background: #ffffff !important;
+  --tw-drop-shadow: drop-shadow(0 4px 3px rgba(0, 0, 0, .07)) drop-shadow(0 2px 2px rgba(0, 0, 0, .06)) !important;
+  filter: var(--tw-drop-shadow) !important;
+  min-height: 5vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  text-decoration: none;
+  animation-delay: 4ms;
+}
+
+.btn-navigation:hover {
+  background: var(--business-color-primary) !important;
+  color: white !important;
+  animation-delay: 4ms;
+}
+
+.btn-navigation.active {
+  background: var(--business-color-primary) !important;
+  color: var(--business-color-semi);
+  border: 1px solid var(--business-color-semi);
 }

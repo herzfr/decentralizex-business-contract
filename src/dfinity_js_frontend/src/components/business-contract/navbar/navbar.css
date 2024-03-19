@@ -1,3 +1,7 @@
 .img-logo {
     width: 20%;
 }
+
+.login {
+    background: var(--business-color-secondary);
+}
