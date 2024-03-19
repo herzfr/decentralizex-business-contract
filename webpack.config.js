@@ -123,5 +123,6 @@ module.exports = {
     hot: true,
     watchFiles: [path.resolve(__dirname, "src", frontendDirectory, "src")],
     liveReload: true,
+    historyApiFallback: true,
   },
 };

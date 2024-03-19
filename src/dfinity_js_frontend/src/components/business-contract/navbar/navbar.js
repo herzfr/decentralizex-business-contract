@@ -1,6 +1,11 @@
 import React from "react";
 import { Button, Container, Navbar } from "react-bootstrap";
 import './navbar.css'
+import { loginIc } from "../../../utils/auth-client";
+
+async function login() {
+    await loginIc();
+}
 
 function Navi({ isAuthenticated }) {
     return (
@@ -14,7 +19,7 @@ function Navi({ isAuthenticated }) {
                             Signed in as: <a href="#login">Mark Otto</a>
                         </Navbar.Text>
                     ) : (
-                        <Button variant="outline-success">Login <img className="img-logo" src="/assets/img/internet-computer-icp-logo.png" alt="DFINITY logo" /></Button>
+                        <Button variant="outline-success" onClick={login}>Login <img className="img-logo" src="/assets/img/internet-computer-icp-logo.png" alt="DFINITY logo" /></Button>
                     )}
                 </Navbar.Collapse>
             </Container>

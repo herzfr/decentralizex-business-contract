@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, Fragment } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import React, { createContext, useContext, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navi from "./components/business-contract/navbar/navbar";
 import Website from "./components/business-contract/website/website";
 import Dashboard from "./components/business-contract/contract/dashboard/dashboard";
@@ -20,7 +20,7 @@ export const useAuth = () => useContext(AuthContext);
 
 const PrivateRoute = ({ element: Element, ...rest }) => {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Outlet /> : <Navigate to="/" />;
+  return isAuthenticated ? <Element {...rest} /> : <Navigate to="/" />;
 };
 
 const App = () => (
@@ -32,17 +32,15 @@ const App = () => (
 const MainApp = () => {
   const { isAuthenticated } = useAuth();
   return (
-    <Router>
-      <Fragment>
+    <main>
+      <Router>
         <Navi isAuthenticated={isAuthenticated} />
         <Routes>
-          <Route exact path='/' element={<PrivateRoute />}>
-            <Route exact path='/dashboard' element={<Dashboard />} />
-          </Route>
-          <Route exact path='/' element={<Website />} />
+          <Route path='/' element={<Website />} />
+          <Route path='/dashboard' element={<PrivateRoute element={Dashboard} />} />
         </Routes>
-      </Fragment>
-    </Router>
+      </Router>
+    </main>
   )
 };
 
