@@ -24,15 +24,14 @@ export default Canister({
     upsertParties: update([partiespayload], Result(parties, text), async (payload) => {
         try {
             let party = businessParties.get(payload.account_id)
-            let new_party: Parties = ICParty
+            // let new_party: Parties = ICParty
 
             if ('None' in party) {
-                new_party = {
-                    ...new_party,
+                let new_party: Parties = {
                     account_id: payload.account_id,
                     legal_name: payload.legal_name,
                     address: payload.address,
-                    identification_information: payload.identification_information.Some ?? '',
+                    identification_information: payload.identification_information,
                     type_parties: payload.type_parties
                 }
                 businessParties.insert(new_party.account_id, new_party)
@@ -45,7 +44,7 @@ export default Canister({
                 ...party_update,
                 legal_name: payload.legal_name,
                 address: payload.address,
-                identification_information: payload.identification_information.Some ?? '',
+                identification_information: payload.identification_information,
                 type_parties: payload.type_parties
             }
 

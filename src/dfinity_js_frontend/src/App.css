@@ -1,8 +1,18 @@
 .cover {
-  background-image: radial-gradient( circle farthest-corner at 10% 20%,
-  #35D07F 0%, #2aa666 47.7%, #207d4c 92.3% );
+  background-image: radial-gradient(circle farthest-corner at 10% 20%,
+      #35D07F 0%, #2aa666 47.7%, #207d4c 92.3%);
   border-radius: .5em;
 }
+
 .vh-80 {
-  height: 80vh!important;
+  height: 80vh !important;
+}
+
+.nav-height {
+  height: 10vh !important;
+}
+
+.content-height {
+  height: 90vh !important;
+  padding: 10px !important;
 }

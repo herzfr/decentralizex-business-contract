@@ -6,8 +6,10 @@ import Website from "./components/business-contract/website/website";
 import Dashboard from "./components/business-contract/contract/dashboard/dashboard";
 import CreateContract from "./components/business-contract/contract/create-contract/create-contract";
 import PaymentContract from "./components/business-contract/contract/payment-contract/payment-contract";
+import Parties from "./components/business-contract/contract/parties/parties"
+import DESC_ROUTE from "./components/business-contract/const/general"
 import "./App.css";
-// import { getAuthClient } from "./utils/auth-client";
+
 
 const AuthContext = createContext();
 const AuthProvider = ({ children }) => {
@@ -20,30 +22,17 @@ const AuthProvider = ({ children }) => {
 };
 
 const useAuth = () => useContext(AuthContext);
-const PrivateRoute = ({ element: Element, ...rest }) => {
+const PrivateRoute = ({ element: Element, principal, ...rest }) => {
   const [narative, setNarative] = useState("")
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
     narativeRoute(location.pathname)
-  }, [narative])
+  }, [location.pathname])
 
   const narativeRoute = (path) => {
-    switch (path) {
-      case '/dashboard':
-        setNarative("Monitor contract agreements with clients, list of contracts you have created and are currently running.")
-        break;
-      case '/create-contract':
-        setNarative("Create your cooperation contract here, and save it to enter your work contract list on the dashboard page.")
-        break;
-      case '/payment-contract':
-        setNarative("Make payment for your cooperation contract to the client or view the billing of your cooperation contract with the contracting party.")
-        break;
-      default:
-        setNarative("")
-        break;
-    }
+    setNarative(DESC_ROUTE.find(f => f.url === path).description)
   }
 
   return (
@@ -63,14 +52,18 @@ const PrivateRoute = ({ element: Element, ...rest }) => {
               to="/payment-contract" activeclassname="active">
               Payment Contract
             </NavLink>
+            <NavLink className='btn-navigation'
+              to="/parties" activeclassname="active">
+              Parties
+            </NavLink>
           </div>
         </Col>
         <Col sm={9}>
-          <Card className="mb-4">
+          <Card className="main-card mb-4">
             <Card.Body>{narative}</Card.Body>
           </Card>
           <div>
-            {isAuthenticated ? <Element {...rest} /> : <Navigate to="/" />}
+            {isAuthenticated ? <Element principal={principal} {...rest} /> : <Navigate to="/" />}
           </div>
         </Col>
       </Row>
@@ -92,6 +85,7 @@ const MainApp = () => {
   const [principalText, setPrincipalText] = useState(null);
   const [whoamiActor, setWhoamiActor] = useState(null);
 
+
   useEffect(async () => {
     await fetchAuthIdentification()
   }, [])
@@ -111,16 +105,19 @@ const MainApp = () => {
   };
 
   return (
-    <main>
+    <main style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Router>
-        <Navi isAuthenticated={isAuthenticated}
+        <Navi className="nav-height" isAuthenticated={isAuthenticated}
           principalText={principalText} />
-        <Routes>
-          <Route path='/' element={<Website />} />
-          <Route path='/dashboard' element={<PrivateRoute element={Dashboard} />} />
-          <Route path="/create-contract" element={<PrivateRoute element={CreateContract} />} />
-          <Route path="/payment-contract" element={<PrivateRoute element={PaymentContract} />} />
-        </Routes>
+        <div className="content-height">
+          <Routes>
+            <Route path='/' element={<Website />} />
+            <Route path='/dashboard' element={<PrivateRoute element={Dashboard} />} />
+            <Route path="/create-contract" element={<PrivateRoute element={CreateContract} />} />
+            <Route path="/payment-contract" element={<PrivateRoute element={PaymentContract} />} />
+            <Route path="/parties" element={<PrivateRoute element={Parties} principal={principal} />} />
+          </Routes>
+        </div>
       </Router>
     </main>
   )

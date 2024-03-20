@@ -108,7 +108,7 @@ export const partiespayload = Record({
     account_id: text,
     legal_name: text,
     address: text,
-    identification_information: Opt(text),
+    identification_information: text,
     type_parties: TipeParty,
 });
 

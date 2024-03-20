@@ -8,7 +8,7 @@ export async function initializeContract() {
     window.auth.client = authClient;
     window.auth.isAuthenticated = await authClient.isAuthenticated()
     window.auth.identity = authClient.getIdentity();
-    window.auth.principal = authClient.getIdentity()?.getPrincipal();
+    window.auth.principal = await authClient.getIdentity()?.getPrincipal();
     window.auth.principalText = authClient.getIdentity()?.getPrincipal().toText();
     window.canister.dcx = await getDCXBusinessContract();
     window.canister.ledger = await getLedger();

@@ -35,9 +35,5 @@ export async function issued(payload) {
 }
 
 export async function unissued(payload) {
-    return window.canister.dcx.issued(payload)
-}
-
-export async function unissued(payload) {
-    return window.canister.dcx.issued(payload)
+    return window.canister.dcx.unissued(payload)
 }

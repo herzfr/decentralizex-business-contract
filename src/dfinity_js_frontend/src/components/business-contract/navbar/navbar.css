@@ -5,3 +5,7 @@
 .login {
     background: var(--business-color-secondary);
 }
+
+.nav-height {
+    height: 10vh !important;
+}

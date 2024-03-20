@@ -35,7 +35,7 @@ function Navi({ isAuthenticated, principalText }) {
     }
 
     return (
-        <Navbar sticky="top" className="bg-body-tertiary">
+        <Navbar sticky="top" className="bg-body-tertiary nav-height">
             <Container fluid>
                 <Navbar.Brand href="/">DCX Business Contract</Navbar.Brand>
                 <Navbar.Toggle />
