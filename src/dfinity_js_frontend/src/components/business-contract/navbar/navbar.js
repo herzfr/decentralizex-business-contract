@@ -42,7 +42,7 @@ function Navi({ isAuthenticated, principalText }) {
                 <Navbar.Collapse className="justify-content-end" style={{ maxWidth: '20%' }} >
                     {isAuthenticated ? loading ? (<Loader />) : (
                         <Dropdown>
-                            <Dropdown.Toggle variant="dcx-primary" id="dropdown-basic">
+                            <Dropdown.Toggle variant="dcx-goldblue" id="dropdown-basic">
                                 Principal: {principal}
                             </Dropdown.Toggle>
 

@@ -37,7 +37,7 @@ const PrivateRoute = ({ element: Element, principal, ...rest }) => {
 
   return (
     <Container fluid>
-      <Row>
+      <Row className="content-row">
         <Col sm={3}>
           <div className="d-grid gap-2">
             <NavLink className='btn-navigation'

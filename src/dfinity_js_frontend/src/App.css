@@ -16,3 +16,10 @@
   height: 90vh !important;
   padding: 10px !important;
 }
+
+.content-row {
+  padding-top: calc(var(--bs-gutter-x)* .5) !important;
+  padding-bottom: calc(var(--bs-gutter-x)* .5) !important;
+  background: aliceblue !important;
+  border-radius: 0.3rem !important;
+}

@@ -4,3 +4,13 @@
     filter: var(--tw-drop-shadow) !important;
     border: none !important;
 }
+
+.dcx-header {
+    font-size: 14px;
+    border-bottom: #66fcf1 solid !important;
+    background: #050505 !important;
+    color: #f1be5f !important;
+    font-weight: 600 !important;
+    --tw-drop-shadow: drop-shadow(0 4px 3px rgb(102 252 241 / 44%)) drop-shadow(0 2px 2px rgba(0, 0, 0, .06)) !important;
+    filter: var(--tw-drop-shadow) !important;
+}

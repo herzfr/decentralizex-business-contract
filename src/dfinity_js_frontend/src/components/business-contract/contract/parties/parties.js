@@ -6,6 +6,7 @@ import { validateRequired } from '../../const/validation'; // Import validation 
 import { ROLE } from "../../const/general";
 import AlertComponent from "../../helper/alert";
 import { getParties, registerParties } from "../../../../utils/business-contract";
+import './parties.css'
 
 function Parties({ principal }) {
     const [prcpl, setPrcpl] = useState(null);
@@ -156,7 +157,7 @@ function Parties({ principal }) {
             <Row>
                 <Col sm={6}>
                     <Card>
-                        <Card.Header className="dcx-title-header-panel">Your Parties is here</Card.Header>
+                        <Card.Header className="dcx-header">UPDATE YOUR PARTIES HERE</Card.Header>
                         <Card.Body>
                             <Form onSubmit={handleSubmit}>
                                 <Row>
@@ -208,13 +209,13 @@ function Parties({ principal }) {
                 </Col>
                 <Col sm={6}>
                     <Card className="box-display-plain">
-                        <Card.Header>{selectedRole} LETTER</Card.Header>
+                        <Card.Header className="dcx-header">{selectedRole} LETTER</Card.Header>
                         <Card.Body>
-                            <Card.Title>{formData.legal_name !== '' ? formData.legal_name : 'Legan Name'}</Card.Title>
-                            <Card.Text>
+                            <Card.Title style={{ fontSize: '14px' }}>{formData.legal_name !== '' ? formData.legal_name : 'Legan Name'}</Card.Title>
+                            <Card.Text style={{ fontSize: '12px' }}>
                                 {formData.address !== '' ? formData.address : 'Ex. Here will be displayed the address that will be filled in the left column of the form.'}
                             </Card.Text>
-                            <div dangerouslySetInnerHTML={{ __html: formData.identification_information }} />
+                            <div style={{ fontSize: 'smaller' }} dangerouslySetInnerHTML={{ __html: formData.identification_information }} />
                         </Card.Body>
                     </Card>
                 </Col>
