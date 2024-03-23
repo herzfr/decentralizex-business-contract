@@ -39,6 +39,12 @@ function AlertComponent({ type, message, head, onClick }) {
                     icon: (<i className="bi bi-cone-striped dcx-text-warning"></i>),
                     text: 'dcx-text-warning'
                 };
+            case 'info':
+                return {
+                    box: 'dcx-alert-info',
+                    icon: (<i className="bi bi-cone-striped dcx-text-info"></i>),
+                    text: 'dcx-text-info'
+                };
             default:
                 return {
                     box: 'dcx-alert-info',

@@ -12,4 +12,5 @@ export async function initializeContract() {
     window.auth.principalText = authClient.getIdentity()?.getPrincipal().toText();
     window.canister.dcx = await getDCXBusinessContract();
     window.canister.ledger = await getLedger();
+    console.log('APP initializeContract run');
 }

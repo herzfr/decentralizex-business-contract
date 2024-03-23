@@ -1,4 +1,4 @@
-import { None, Opt, Principal, Record, Variant, Vec, bool, int, int8, nat64, text } from "azle";
+import { None, Opt, Principal, Record, Variant, Vec, bool, int, int16, int8, nat64, text } from "azle";
 
 export const TipeParty = Variant({
     INDIVIDUALS: text,
@@ -16,8 +16,14 @@ const Error = Variant({
     InvalidPayload: text,
 });
 
+export const listholder = Record({
+    contract_id: Vec(text),
+    badge: bool,
+    message: text,
+});
+
 export const parties = Record({
-    account_id: text,
+    account_id: Principal,
     legal_name: text,
     address: text,
     identification_information: text,
@@ -25,7 +31,7 @@ export const parties = Record({
 });
 
 export const signature = Record({
-    party_id: text,
+    principal: Principal,
     sign_date: nat64,
     agree: bool,
 })
@@ -59,9 +65,9 @@ export const payment = Record({
 })
 
 export const contract = Record({
-    principal: Principal, // AS A PARTY WHO CREATE CONTRACT
+    contracting_party: Principal, // AS A PARTY WHO CREATE CONTRACT
+    contract_recipient: Principal,
     contract_id: text,
-    client_wallet_id: text, // ITS a client wallet id
     parties_involved: Vec(parties), // as the involved party 
     effective_date: text,
     objective: text,
@@ -84,9 +90,9 @@ export const contract = Record({
 
 
 export const contractpayload = Record({
-    principal: Principal, // AS A PARTY WHO CREATE CONTRACT
-    parties_involved: parties, // as the involved party 
-    client_wallet_id: text,
+    contracting_party: Principal, // AS A PARTY WHO CREATE CONTRACT
+    contract_recipient: Principal,
+    parties_involved: parties,
     effective_date: text,
     objective: text,
     scope_of_work: text,
@@ -105,7 +111,7 @@ export const contractpayload = Record({
 })
 
 export const partiespayload = Record({
-    account_id: text,
+    account_id: Principal,
     legal_name: text,
     address: text,
     identification_information: text,
@@ -113,7 +119,7 @@ export const partiespayload = Record({
 });
 
 export const getpartypayload = Record({
-    account_id: text
+    account_id: Principal
 })
 
 export const getcontractpayload = Record({
@@ -124,13 +130,20 @@ export const getcontractpayload = Record({
 export const getcontractapplicant = Record({
     principal: Principal,
     index: int8,
-    length: int8
+    length: int16
 })
 
 export const getcontractholder = Record({
-    client_wallet_id: text,
+    principal: Principal,
+    contract_assigns: Vec(text),
     index: int8,
     length: int8
+})
+
+export const assigncontractpayload = Record({
+    principal: Principal,
+    contract_id: text,
+    contract_recipient: Principal
 })
 
 export const payloadsign = Record({

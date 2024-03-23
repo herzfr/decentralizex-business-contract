@@ -1,5 +1,5 @@
-import { Canister, Duration, None, Opt, Principal, Result, Some, StableBTreeMap, Vec, bool, ic, nat64, query, text, update } from 'azle';
-import { contract, contractpayload, createpaymentpayload, getcontractapplicant, getcontractholder, getcontractpayload, getpartypayload, makepaymentpayload, parties, partiespayload, payloadsign, payment, signature, transaction } from './interface';
+import { Canister, Duration, Err, None, Opt, Principal, Result, Some, StableBTreeMap, Vec, bool, ic, nat64, query, text, update } from 'azle';
+import { assigncontractpayload, contract, contractpayload, createpaymentpayload, getcontractapplicant, getcontractholder, getcontractpayload, getpartypayload, listholder, makepaymentpayload, parties, partiespayload, payloadsign, payment, signature, transaction } from './interface';
 import { ICContract, ICParty, ICSignature } from './payload';
 import { v4 as uuidv4 } from "uuid";
 // import { hash } from '@dfinity/agent';
@@ -10,12 +10,14 @@ type Contract = typeof contract.tsType;
 type Parties = typeof parties.tsType;
 type Signature = typeof signature.tsType;
 type Transaction = typeof transaction.tsType;
-type Payment = typeof payment.tsType
+type Payment = typeof payment.tsType;
+type ListHolder = typeof listholder.tsType;
 
 const TIMEOUT_PERIOD = 48000n;
 
 let businessContract = StableBTreeMap<text, Contract>(2);
-let businessParties = StableBTreeMap<text, Parties>(1);
+let businessParties = StableBTreeMap<Principal, Parties>(2);
+let assignListHolder = StableBTreeMap<Principal, ListHolder>(1);
 let transactionPending = StableBTreeMap<text, Transaction>(0);
 
 const icpCanister = LadgerCanister(PrincipalDfinity.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"))
@@ -24,7 +26,6 @@ export default Canister({
     upsertParties: update([partiespayload], Result(parties, text), async (payload) => {
         try {
             let party = businessParties.get(payload.account_id)
-            // let new_party: Parties = ICParty
 
             if ('None' in party) {
                 let new_party: Parties = {
@@ -34,6 +35,11 @@ export default Canister({
                     identification_information: payload.identification_information,
                     type_parties: payload.type_parties
                 }
+                assignListHolder.insert(new_party.account_id, {
+                    contract_id: [],
+                    badge: true,
+                    message: 'Congratulations, you have registered as a participating party'
+                })
                 businessParties.insert(new_party.account_id, new_party)
                 return Result.Ok(new_party);
             }
@@ -49,28 +55,38 @@ export default Canister({
             }
 
             businessParties.insert(party_update.account_id, party_update)
+            const lHolder = assignListHolder.get(party_update.account_id).Some
+            assignListHolder.insert(party_update.account_id, {
+                contract_id: lHolder?.contract_id ?? [],
+                badge: true,
+                message: "You have just made changes to your party's data"
+            })
             return Result.Ok(party_update);
         } catch (error) {
             return Result.Err("Error While update Party [" + error + "]");
         }
     }),
-    getParty: query([getpartypayload], Result(parties, text), (party) => {
-        let ct = businessParties.get(party.account_id)
+    getParty: query([Principal], Result(parties, text), (party) => {
+        let ct = businessParties.get(party)
         if ('None' in ct) return Result.Err('Party is Empty')
         return Result.Ok(ct.Some)
     }),
-    createContract: update([contractpayload, Principal], Result(contract, text), (create, principal) => {
+    createContract: update([contractpayload], Result(contract, text), (create) => {
         try {
             let party = businessParties.get(create.parties_involved.account_id)
             if ('None' in party) return Result.Err('Party not found, please register your party first')
 
-            let new_contract: Contract = ICContract
+            let payset: Payment = {
+                total_payment: 0n,
+                change_output: 0n,
+                payment_status: { "PaymentPending": "PENDING" },
+                transactions: []
+            }
 
-            new_contract = {
-                ...new_contract,
+            let new_contract: Contract = {
                 contract_id: uuidv4(),
-                principal: principal,
-                client_wallet_id: create.client_wallet_id,
+                contracting_party: create.contracting_party,
+                contract_recipient: create.contract_recipient,
                 parties_involved: [party.Some],
                 effective_date: create.effective_date,
                 objective: create.effective_date,
@@ -88,6 +104,7 @@ export default Canister({
                 signatures: [], // as the signing party
                 status: { "UNISSUED": "UNISSUED" },
                 contract_payment: create.contract_payment.Some ?? BigInt(0),
+                payment: payset
             }
             businessContract.insert(new_contract.contract_id, new_contract)
             return Result.Ok(new_contract);
@@ -95,174 +112,225 @@ export default Canister({
             return Result.Err("Error While creating contract [" + error + "]");
         }
     }),
-    getContract: query([getcontractpayload], Result(Opt(contract), text), (key) => {
-        let ct = businessContract.get(key.contract_id)
-        if ('None' in ct) return Result.Err('Contract is Empty')
-        return Result.Ok(ct)
-    }),
     getContractAplicant: query([getcontractapplicant], Result(Vec(contract), text), (list) => {
         const contractList = businessContract.items(list.index, list.length)
-            .filter(e => e[1].principal.toString() === list.principal.toString())
+            .filter(e => e[1].contracting_party === list.principal)
             .map(([_, contractData]) => contractData)
         if (contractList.length === 0) {
             return Result.Err(`There's no one contract list`)
         }
         return Result.Ok(contractList)
     }),
-    getContractHolder: query([getcontractholder], Result(Vec(contract), text), (list) => {
+    getListHolder: query([Principal], Result(listholder, text), (prcpl) => {
+        const lHolder = assignListHolder.get(prcpl)
+        if ('None' in lHolder) Result.Err(`To obtain contract status, please register the party first`)
+
+        const lhldr = lHolder.Some;
+        if (lhldr) return Result.Ok(lhldr)
+
+        return Result.Err(`To obtain contract status, please register the party first`)
+    }),
+    getContractHolder: query([getcontractholder], Result(Vec(contract), Vec(contract)), (list) => {
+        const ctxList = list.contract_assigns
+        if (ctxList.length === 0) return Result.Err([])
+
         const contractList = businessContract.items(list.index, list.length)
-            .filter(e => e[1].client_wallet_id === list.client_wallet_id)
-            .map(([_, contractData]) => contractData)
-        if (contractList.length === 0) {
-            return Result.Err(`There's no one contract list`)
-        }
-        return Result.Ok(contractList)
+            .filter(e => e[1].contract_recipient === list.principal
+                && ctxList.includes(e[1].contract_id))
+            .map(([_, contractData]) => contractData);
+        return contractList.length > 0 ? Result.Ok(contractList) : Result.Err([])
     }),
-    signContractApplicant: update([payloadsign], Result(text, text), (sign) => {
+    assignContractTo: update([assigncontractpayload], Result(contract, text), async (assign) => {
         try {
-            let ct = businessContract.get(sign.contract_id)
-            let new_sign: Signature = ICSignature
+            const ctrxlist = businessContract.get(assign.contract_id)
+            if ('None' in ctrxlist) return Err('Contract Not Found');
 
-            if ('None' in ct) {
-                return Result.Err('Contract is Empty')
-            }
+            const ctrx = ctrxlist.Some;
+            if (ctrx.contract_recipient.compareTo(assign.contract_recipient) == 'eq') return Err('Already assign to client');
 
-            if (sign.principal.toString() !== ct.Some.principal.toString()) return Result.Err("You're not as principal")
-            if (ct.Some.signatures.length > 0) {
-                let idxSign = ct.Some.signatures.findIndex(f => f.party_id === sign.parties.account_id)
-                if (idxSign !== -1) return Result.Err("You already signed!")
-            }
+            // Info to holder
+            const lHolder = assignListHolder.get(assign.contract_recipient)
+            const lhldr = lHolder.Some;
+            if ('None' in lHolder) Result.Err(`The client you are targeting is not registered, please ask the client to register first.`)
+            if (!lhldr) Result.Err(`The client you are targeting is not registered, please ask the client to register first.`);
 
-            new_sign = {
-                ...new_sign,
-                agree: true,
-                sign_date: ic.time(),
-                party_id: sign.parties.account_id
-            }
-            ct.Some.signatures.push(new_sign)
-            businessContract.insert(ct.Some.contract_id, ct.Some)
-            return Result.Ok("Success Signed");
+            ctrx.contract_recipient = assign.contract_recipient
+            businessContract.insert(ctrx.contract_id, ctrx)
+            assignListHolder.insert(assign.contract_recipient, {
+                contract_id: [...lhldr?.contract_id ?? [], ctrx.contract_id],
+                badge: true,
+                message: "Your contract has been issued by the contracting party."
+            })
+
+            return Result.Ok(ctrx)
         } catch (error) {
-            return Result.Err(`Error while do signing`)
+            return Result.Err("Error While assign contract [" + error + "]");
         }
     }),
-    signContractHolder: update([payloadsign], Result(text, text), (sign) => {
-        try {
-            let ct = businessContract.get(sign.contract_id)
-            let new_sign: Signature = ICSignature
-
-            if ('None' in ct) return Result.Err('Contract is Empty')
-
-            if (ct.Some.signatures.length > 0) {
-                let idxSign = ct.Some.signatures.findIndex(f => f.party_id === sign.parties.account_id)
-                if (idxSign !== -1) return Result.Err("You already signed!")
+    readBadge: update([Principal], Result(text, text), (prcpl) => {
+        const lHolder = assignListHolder.get(prcpl)
+        if ('Some' in lHolder) {
+            const lshdr = lHolder.Some;
+            if (lshdr) {
+                lshdr.badge = false
+                lshdr.message = ''
+                assignListHolder.insert(prcpl, lshdr)
+                return Result.Ok('Success')
             }
 
-            if (ct.Some.client_wallet_id !== sign.client_wallet_id.Some) return Result.Err('Your access does not have the authority to sign')
-
-            new_sign = {
-                ...new_sign,
-                agree: true,
-                sign_date: ic.time(),
-                party_id: sign.parties.account_id
-            }
-
-            ct.Some.parties_involved.push(sign.parties)
-            ct.Some.signatures.push(new_sign)
-            businessContract.insert(ct.Some.contract_id, ct.Some)
-            return Result.Ok("Success Signed");
-        } catch (error) {
-            return Result.Err(`Error while do signing`)
         }
-    }),
-    issued: update([getcontractpayload], Result(text, text), (key) => {
-        try {
-            let ct = businessContract.get(key.contract_id)
-            if ('None' in ct) return Result.Err("There are no contracts listed")
-            if (key.principal.toString() !== ct.Some.principal.toString()) return Result.Err("You don't have access")
-            if (ct.Some.signatures.length === 1) return Result.Err("You and client must sign first before issued")
-            ct.Some.status = { "ISSUED": "SUCCESS" }
+        return Result.Err('Error')
+    })
+    // getContractPublic: query([getcontractpayload], Result(Opt(contract), text), (key) => {
+    //     let ct = businessContract.get(key.contract_id)
+    //     if ('None' in ct) return Result.Err('Contract is Empty')
+    //     return Result.Ok(ct)
+    // }),
+    // signContractApplicant: update([payloadsign], Result(text, text), (sign) => {
+    //     try {
+    //         let ct = businessContract.get(sign.contract_id)
+    //         let new_sign: Signature = ICSignature
 
-            businessContract.insert(ct.Some.contract_id, ct.Some)
-            return Result.Ok("Success Issued");
-        } catch (error) {
-            return Result.Err(`Error Issued`)
-        }
+    //         if ('None' in ct) {
+    //             return Result.Err('Contract is Empty')
+    //         }
+
+    //         if (sign.principal.toString() !== ct.Some.principal.toString()) return Result.Err("You're not as principal")
+    //         if (ct.Some.signatures.length > 0) {
+    //             let idxSign = ct.Some.signatures.findIndex(f => f.party_id === sign.parties.account_id)
+    //             if (idxSign !== -1) return Result.Err("You already signed!")
+    //         }
+
+    //         new_sign = {
+    //             ...new_sign,
+    //             agree: true,
+    //             sign_date: ic.time(),
+    //             party_id: sign.parties.account_id
+    //         }
+    //         ct.Some.signatures.push(new_sign)
+    //         businessContract.insert(ct.Some.contract_id, ct.Some)
+    //         return Result.Ok("Success Signed");
+    //     } catch (error) {
+    //         return Result.Err(`Error while do signing`)
+    //     }
+    // }),
+    // signContractHolder: update([payloadsign], Result(text, text), (sign) => {
+    //     try {
+    //         let ct = businessContract.get(sign.contract_id)
+    //         let new_sign: Signature = ICSignature
+
+    //         if ('None' in ct) return Result.Err('Contract is Empty')
+
+    //         if (ct.Some.signatures.length > 0) {
+    //             let idxSign = ct.Some.signatures.findIndex(f => f.party_id === sign.parties.account_id)
+    //             if (idxSign !== -1) return Result.Err("You already signed!")
+    //         }
+
+    //         if (ct.Some.client_wallet_id !== sign.client_wallet_id.Some) return Result.Err('Your access does not have the authority to sign')
+
+    //         new_sign = {
+    //             ...new_sign,
+    //             agree: true,
+    //             sign_date: ic.time(),
+    //             party_id: sign.parties.account_id
+    //         }
+
+    //         ct.Some.parties_involved.push(sign.parties)
+    //         ct.Some.signatures.push(new_sign)
+    //         businessContract.insert(ct.Some.contract_id, ct.Some)
+    //         return Result.Ok("Success Signed");
+    //     } catch (error) {
+    //         return Result.Err(`Error while do signing`)
+    //     }
+    // }),
+    // issued: update([getcontractpayload], Result(text, text), (key) => {
+    //     try {
+    //         let ct = businessContract.get(key.contract_id)
+    //         if ('None' in ct) return Result.Err("There are no contracts listed")
+    //         if (key.principal.toString() !== ct.Some.principal.toString()) return Result.Err("You don't have access")
+    //         if (ct.Some.signatures.length === 1) return Result.Err("You and client must sign first before issued")
+    //         ct.Some.status = { "ISSUED": "SUCCESS" }
+
+    //         businessContract.insert(ct.Some.contract_id, ct.Some)
+    //         return Result.Ok("Success Issued");
+    //     } catch (error) {
+    //         return Result.Err(`Error Issued`)
+    //     }
 
 
-    }),
-    unissued: update([getcontractpayload], Result(text, text), (key) => {
-        try {
-            let ct = businessContract.get(key.contract_id)
-            if ('None' in ct) return Result.Err("There are no contracts listed")
-            if (key.principal.toString() !== ct.Some.principal.toString()) return Result.Err("You don't have access")
-            ct.Some.status = { "UNISSUED": "UNISSUED" }
+    // }),
+    // unissued: update([getcontractpayload], Result(text, text), (key) => {
+    //     try {
+    //         let ct = businessContract.get(key.contract_id)
+    //         if ('None' in ct) return Result.Err("There are no contracts listed")
+    //         if (key.principal.toString() !== ct.Some.principal.toString()) return Result.Err("You don't have access")
+    //         ct.Some.status = { "UNISSUED": "UNISSUED" }
 
-            businessContract.insert(ct.Some.contract_id, ct.Some)
-            return Result.Ok("Success Unissued");
-        } catch (error) {
-            return Result.Err(`Error Unissued`)
-        }
+    //         businessContract.insert(ct.Some.contract_id, ct.Some)
+    //         return Result.Ok("Success Unissued");
+    //     } catch (error) {
+    //         return Result.Err(`Error Unissued`)
+    //     }
 
 
-    }),
-    createTransaction: update([createpaymentpayload], Result(transaction, text), async (payload) => {
-        let contract = businessContract.get(payload.contract_id)
-        if ('None' in contract) return Result.Err("There are no contracts listed")
-        if (contract.Some.principal !== payload.principal) return Result.Err("You cannot make payment towards this contract")
+    // }),
+    // createTransaction: update([createpaymentpayload], Result(transaction, text), async (payload) => {
+    //     let contract = businessContract.get(payload.contract_id)
+    //     if ('None' in contract) return Result.Err("There are no contracts listed")
+    //     if (contract.Some.principal !== payload.principal) return Result.Err("You cannot make payment towards this contract")
 
-        const on = contract.Some
-        if (on.payment.total_payment >= on.contract_payment || on.payment.total_payment >= payload.amount && on.payment.change_output == BigInt(0)) return Result.Err("Contract has been paid!")
+    //     const on = contract.Some
+    //     if (on.payment.total_payment >= on.contract_payment || on.payment.total_payment >= payload.amount && on.payment.change_output == BigInt(0)) return Result.Err("Contract has been paid!")
 
-        if (on.payment.transactions.length > 0) { // validate if have transaction history
-            let total_trx = on.payment.transactions.reduce((a, b) => a + parseFloat(b.total.toString()), 0)
-            if (payload.amount >= total_trx) return Result.Err("Your payment exceeds the total amount due. Please try again with a payment amount below the total transaction.")
-        }
+    //     if (on.payment.transactions.length > 0) { // validate if have transaction history
+    //         let total_trx = on.payment.transactions.reduce((a, b) => a + parseFloat(b.total.toString()), 0)
+    //         if (payload.amount >= total_trx) return Result.Err("Your payment exceeds the total amount due. Please try again with a payment amount below the total transaction.")
+    //     }
 
-        let idtrx = getRandomId(16)
-        let memo_hash = await getCorrelationId(idtrx)
-        const tranx: Transaction = {
-            transactionid: idtrx,
-            total: payload.amount,
-            reciever: payload.reciever,
-            paid_at_block: None,
-            transaction_memo: payload.transaction_memo,
-            transaction_hash: memo_hash,
-            token_name: '',
-            token_symbol: '',
-            transaction_date: BigInt(0),
-            transfer_fee: BigInt(0),
-        }
+    //     let idtrx = getRandomId(16)
+    //     let memo_hash = await getCorrelationId(idtrx)
+    //     const tranx: Transaction = {
+    //         transactionid: idtrx,
+    //         total: payload.amount,
+    //         reciever: payload.reciever,
+    //         paid_at_block: None,
+    //         transaction_memo: payload.transaction_memo,
+    //         transaction_hash: memo_hash,
+    //         token_name: '',
+    //         token_symbol: '',
+    //         transaction_date: BigInt(0),
+    //         transfer_fee: BigInt(0),
+    //     }
 
-        transactionPending.insert(memo_hash.toString(), tranx);
-        timeoutTransaction(memo_hash.toString(), TIMEOUT_PERIOD);
-        return Result.Ok(tranx);
-    }),
-    maketPayment: update([nat64, makepaymentpayload], Result(text, text), async (cvr, payload) => {
-        const trx = transactionPending.get(payload.transaction_memo)
-        if ('None' in trx) Result.Err("Transaksi tidak ditemukan")
+    //     transactionPending.insert(memo_hash.toString(), tranx);
+    //     timeoutTransaction(memo_hash.toString(), TIMEOUT_PERIOD);
+    //     return Result.Ok(tranx);
+    // }),
+    // maketPayment: update([nat64, makepaymentpayload], Result(text, text), async (cvr, payload) => {
+    //     const trx = transactionPending.get(payload.transaction_memo)
+    //     if ('None' in trx) Result.Err("Transaksi tidak ditemukan")
 
-        const isVerified = await verifyPayment(cvr, payload.principal, payload.transaction_hash)
-        if (!isVerified) {
-            return Result.Err(`cannot complete the reserve: cannot verify the payment, memo=${payload.transaction_memo}`);
-        }
+    //     const isVerified = await verifyPayment(cvr, payload.principal, payload.transaction_hash)
+    //     if (!isVerified) {
+    //         return Result.Err(`cannot complete the reserve: cannot verify the payment, memo=${payload.transaction_memo}`);
+    //     }
 
-        const trsx = trx.Some
-        const bsnis = businessContract.get(payload.contract_id)
+    //     const trsx = trx.Some
+    //     const bsnis = businessContract.get(payload.contract_id)
 
-        if ("None" in bsnis) {
-            throw Result.Err(`Contract with id=${payload.contract_id} not found`)
-        }
+    //     if ("None" in bsnis) {
+    //         throw Result.Err(`Contract with id=${payload.contract_id} not found`)
+    //     }
 
-        const busniss = bsnis.Some;
-        busniss.payment = await calculate(busniss.contract_payment, busniss.payment, trsx!)
-        businessContract.insert(busniss.contract_id, busniss)
-        transactionPending.remove(payload.transaction_memo)
-        return Result.Ok("Payment Success");
-    }),
-    getAddressFromPrincipal: query([Principal], text, (principal) => {
-        return hexAddressFromPrincipal(principal, 0);
-    }),
+    //     const busniss = bsnis.Some;
+    //     busniss.payment = await calculate(busniss.contract_payment, busniss.payment, trsx!)
+    //     businessContract.insert(busniss.contract_id, busniss)
+    //     transactionPending.remove(payload.transaction_memo)
+    //     return Result.Ok("Payment Success");
+    // }),
+    // getAddressFromPrincipal: query([Principal], text, (principal) => {
+    //     return hexAddressFromPrincipal(principal, 0);
+    // }),
 
 })
 

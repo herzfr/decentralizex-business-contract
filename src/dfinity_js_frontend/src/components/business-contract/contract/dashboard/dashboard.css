@@ -1,0 +1,10 @@
+.dcx-tab-panel {
+    min-height: 50vh;
+}
+
+.dcx-content-panel {
+    display: grid !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: inherit;
+}

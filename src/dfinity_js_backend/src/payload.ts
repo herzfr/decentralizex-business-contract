@@ -16,7 +16,8 @@ export const ICSignature = {
 
 export const ICContract = {
     contract_id: '',
-    principal: ic.caller(), // AS A PARTY WHO CREATE CONTRACT
+    contracting_party: '',
+    contract_recipient: '',
     parties_involved: [], // as the involved party 
     client_wallet_id: '',
     effective_date: '',
@@ -34,10 +35,10 @@ export const ICContract = {
     amendments: '',
     signatures: [], // as the signing party
     status: { "ISSUED": "ISSUED" },
-    contract_payment: BigInt(0),
+    contract_payment: 0n,
     payment: {
-        total_payment: BigInt(0),
-        change_output: BigInt(0),
+        total_payment: 0n,
+        change_output: 0n,
         payment_status: { "PaymentPending": "PENDING" },
         transactions: []
     }

@@ -8,15 +8,13 @@ import AlertComponent from "../../helper/alert";
 import { getParties, registerParties } from "../../../../utils/business-contract";
 import './parties.css'
 
-function Parties({ principal }) {
-    const [prcpl, setPrcpl] = useState(null);
+function Parties() {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        account_id: null,
         legal_name: '',
         address: '',
         identification_information: '',
-        type_parties: ROLE.length > 0 ? ROLE[0] : ''
+        type_parties: ROLE.length > 0 ? ROLE[0].value : ''
     });
     const [errors, setErrors] = useState({});
     const [selectedRole, setSelectedRole] = useState(null);
@@ -40,19 +38,16 @@ function Parties({ principal }) {
     }
 
     const getDcx = async () => {
-        const principals = await window.auth.principal
-        const parties = await getParties(principals.toText());
+        const parties = await getParties();
         if ('Ok' in parties) {
             let pts = parties.Ok
             setFormData({
-                account_id: pts.account_id,
                 legal_name: pts.legal_name,
                 address: pts.address,
                 identification_information: pts.identification_information,
                 type_parties: getValueSelected(pts.type_parties),
             })
         }
-        setPrcpl(principals)
     }
 
     useEffect(async () => {
@@ -112,7 +107,6 @@ function Parties({ principal }) {
             // Handle form submission logic here, e.g., send data to server
             let payload = formData
             payload.type_parties = { [formData.type_parties]: formData.type_parties }
-            payload.account_id = prcpl.toText();
             postDcx(payload)
         }
     };

@@ -10,7 +10,7 @@ const RichTextEditor = ({ value, onChange, name }) => {
         if (value !== editorHtml) {
             setEditorHtml(value);
         }
-    }, [value]);
+    }, []);
 
     const handleChange = (html) => {
         setEditorHtml(html);

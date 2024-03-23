@@ -22,6 +22,15 @@ code {
     monospace;
 }
 
+.dcx-loading-general {
+  width: 100%;
+  height: 100%;
+  background: #4791dc2b;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 
 .btn-dcx-secondary {
   color: #66FCF1 !important;

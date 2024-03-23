@@ -9,6 +9,9 @@ import PaymentContract from "./components/business-contract/contract/payment-con
 import Parties from "./components/business-contract/contract/parties/parties"
 import DESC_ROUTE from "./components/business-contract/const/general"
 import "./App.css";
+import { getListHolder, readBadge } from "./utils/business-contract";
+import Loader from "./components/utils/Loader";
+import AlertComponent from "./components/business-contract/helper/alert";
 
 
 const AuthContext = createContext();
@@ -24,15 +27,28 @@ const AuthProvider = ({ children }) => {
 const useAuth = () => useContext(AuthContext);
 const PrivateRoute = ({ element: Element, principal, ...rest }) => {
   const [narative, setNarative] = useState("")
+  const [badge, setBadge] = useState(null);
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
-  useEffect(() => {
+  useEffect(async () => {
     narativeRoute(location.pathname)
+    const bdg = await badgeRead()
+    if (bdg) setBadge(bdg)
   }, [location.pathname])
 
   const narativeRoute = (path) => {
     setNarative(DESC_ROUTE.find(f => f.url === path).description)
+  }
+
+  const badgeRead = async () => {
+    const badge = await getListHolder()
+    setBadge(badge)
+  }
+
+  const readbadge = async () => {
+    const badge = await readBadge()
+    if (badge === null) setBadge(badge)
   }
 
   return (
@@ -60,10 +76,14 @@ const PrivateRoute = ({ element: Element, principal, ...rest }) => {
         </Col>
         <Col sm={9}>
           <Card className="main-card mb-4">
-            <Card.Body>{narative}</Card.Body>
+            <Card.Body>
+              {badge !== null && badge.badge ?
+                (<AlertComponent type={"info"} message={badge.message} head={"Info!"} onClick={readbadge} />)
+                : (<p>{narative}</p>)}
+            </Card.Body>
           </Card>
           <div>
-            {isAuthenticated ? <Element principal={principal} {...rest} /> : <Navigate to="/" />}
+            {isAuthenticated ? <Element {...rest} /> : <Navigate to="/" />}
           </div>
         </Col>
       </Row>
@@ -79,29 +99,34 @@ const App = () => (
 
 const MainApp = () => {
   const { isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(true); // Track loading state
   const [authClient, setAuthClient] = useState(null);
   const [identity, setIdentity] = useState(null);
   const [principal, setPrincipal] = useState(null);
   const [principalText, setPrincipalText] = useState(null);
   const [whoamiActor, setWhoamiActor] = useState(null);
 
-
   useEffect(async () => {
     await fetchAuthIdentification()
+    setLoading(false)
   }, [])
 
   const fetchAuthIdentification = async () => {
-    setPrincipalText(window.auth.principalText)
-    setAuthClient(window.auth.client)
-    setIdentity(window.auth.identity)
-    setPrincipal(window.auth.principal)
-    console.log(window.auth.isAuthenticated)
-    console.log(window.auth.identity)
-    console.log(window.auth.client)
-    console.log(window.auth.principal)
-    console.log(window.auth.principalText)
-    console.log(window.canister.dcx)
-    console.log(window.canister.ledger)
+    console.log('APP fetchAuthIdentification run');
+    await new Promise(resolve => {
+      setPrincipalText(window.auth.principalText)
+      setAuthClient(window.auth.client)
+      setIdentity(window.auth.identity)
+      setPrincipal(window.auth.principal)
+      console.log(window.auth.isAuthenticated)
+      console.log(window.auth.identity)
+      console.log(window.auth.client)
+      console.log(window.auth.principal)
+      console.log(window.auth.principalText)
+      console.log(window.canister.dcx)
+      console.log(window.canister.ledger)
+      setTimeout(resolve, 1000)
+    });
   };
 
   return (
@@ -109,15 +134,19 @@ const MainApp = () => {
       <Router>
         <Navi className="nav-height" isAuthenticated={isAuthenticated}
           principalText={principalText} />
-        <div className="content-height">
-          <Routes>
-            <Route path='/' element={<Website />} />
-            <Route path='/dashboard' element={<PrivateRoute element={Dashboard} />} />
-            <Route path="/create-contract" element={<PrivateRoute element={CreateContract} />} />
-            <Route path="/payment-contract" element={<PrivateRoute element={PaymentContract} />} />
-            <Route path="/parties" element={<PrivateRoute element={Parties} principal={principal} />} />
-          </Routes>
-        </div>
+        {
+          loading ? (<div className="dcx-loading-general"><Loader /></div>) : (
+            <div className="content-height">
+              <Routes>
+                <Route path='/' element={<Website />} />
+                <Route path='/dashboard' element={<PrivateRoute element={Dashboard} />} />
+                <Route path="/create-contract" element={<PrivateRoute element={CreateContract} />} />
+                <Route path="/payment-contract" element={<PrivateRoute element={PaymentContract} />} />
+                <Route path="/parties" element={<PrivateRoute element={Parties} principal={principal} />} />
+              </Routes>
+            </div>
+          )
+        }
       </Router>
     </main>
   )

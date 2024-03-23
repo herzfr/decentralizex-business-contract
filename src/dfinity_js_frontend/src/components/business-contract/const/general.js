@@ -24,3 +24,20 @@ export const ROLE = [
 ]
 
 export default DESC_ROUTE;
+
+export const CONTRACT_PAYLOAD = {
+    parties_involved: [],
+    objective: '',
+    scope_of_work: '',
+    term_and_condition: '',
+    payment_terms: '',
+    term_and_termination: '',
+    confidentiality: '',
+    intellectual_property: '',
+    dispute_resolution: '',
+    governing_law: '',
+    force_majeure: '',
+    notice: '',
+    amendments: '',
+    contract_payment: 0,
+}
